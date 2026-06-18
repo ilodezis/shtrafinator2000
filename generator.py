@@ -313,8 +313,15 @@ def _replace_sdt(sdt: etree._Element, replacement: etree._Element) -> None:
     parent.remove(sdt)
 
 
-def fill_template(record: dict, letter_date: datetime.datetime, signatory: str = "Жаворонкина А.М.") -> tuple[bytes, list[str]]:
+def fill_template(record: dict, letter_date: datetime.datetime, signatory: str = "") -> tuple[bytes, list[str]]:
     warnings: list[str] = []
+
+    # Signatory
+    if signatory:
+        signatory_str = signatory
+    else:
+        signatory_str = "[Подписант не указан]"
+        warnings.append("Подписант не указан")
 
     director, director_missing = derive_director(record)
     if director_missing:
@@ -381,7 +388,7 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
         8: ("inline", fraud_pct_str, False),
         9: ("inline", period_str, False),
         10: ("inline", fine_str, False),
-        11: ("inline", f" ____________/{signatory}", False),
+        11: ("inline", f" ____________/{signatory_str}", False),
     }
 
     for idx in sorted(replacements.keys(), reverse=True):
@@ -422,7 +429,7 @@ def generate_all(
     excel_path: str,
     output_dir: str,
     letter_date: datetime.datetime,
-    signatory: str = "Жаворонкина А.М.",
+    signatory: str = "",
     progress_callback: Optional[Callable[[int, int], None]] = None,
 ) -> list[GenerationResult]:
 

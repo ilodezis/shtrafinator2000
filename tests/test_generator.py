@@ -169,11 +169,11 @@ def test_custom_signatory_injection():
         "email": "test@test.ru"
     }
     
-    # 1. Test default signatory
+    # 1. Test default signatory (empty)
     doc_bytes, _ = generator.fill_template(record, datetime.datetime.now())
     zin = zipfile.ZipFile(io.BytesIO(doc_bytes), 'r')
     doc_text = "".join(etree.fromstring(zin.read('word/document.xml')).itertext())
-    assert "____________/Жаворонкина А.М." in doc_text
+    assert "____________/[Подписант не указан]" in doc_text
     zin.close()
     
     # 2. Test custom signatory

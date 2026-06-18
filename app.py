@@ -81,7 +81,7 @@ class RulesWindow(customtkinter.CTkToplevel):
              "Все созданные файлы Word автоматически очищаются от парольной защиты. Вы можете свободно открывать их и редактировать любые данные, ОГРН, почту или подписи."),
             
             ("✍️ Подпись представителя", 
-             "Внизу каждого документа подставляется подпись указанного в программе уполномоченного представителя (по умолчанию — Жаворонкина А.М.).")
+             "Внизу каждого документа подставляется подпись указанного в программе уполномоченного представителя.")
         ]
 
         for i, (rule_title, rule_body) in enumerate(rules):
@@ -345,7 +345,6 @@ class App(customtkinter.CTk):
             font=self.font_text
         )
         self.signatory_entry.pack(fill="x", padx=18, pady=(0, 15))
-        self.signatory_entry.insert(0, "Жаворонкина А.М.")
 
         # Interactive Rules Button packed right below the signatory input
         rules_btn = customtkinter.CTkButton(
@@ -495,7 +494,7 @@ class App(customtkinter.CTk):
         try:
             excel_path = self.excel_entry.get()
             letter_date = self._get_date()
-            signatory = self.signatory_entry.get().strip() or "Жаворонкина А.М."
+            signatory = self.signatory_entry.get().strip()
 
             results = generator.generate_all(
                 excel_path,
