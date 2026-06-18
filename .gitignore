@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Project generated folders/files
+fonts/
+build/
+dist/
+*.spec
+
+# IDE / Editor config
+.idea/
+.vscode/
+.claude
+.gemini
+
+# Excel data sheets (usually contains sensitive data)
+*.xlsx
+*.xls
+
+# Word documents
+*.docx
