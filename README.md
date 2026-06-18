@@ -1,6 +1,6 @@
 # Штрафинатор 2000
 
-Программа для автоматического создания уведомлений об удержании штрафов (.docx) из общего Excel-реестра (.xlsx).
+Программа разработана для автоматизации процессов в компании **Cloudpayments** (ООО «Клаудпэйментс»). Предназначена для автоматического создания уведомлений об удержании штрафов (.docx) из общего Excel-реестра (.xlsx).
 
 ## Схема работы
 
@@ -56,3 +56,7 @@ graph TD
   ```bash
   python -c "import base64; data = open('Уведомление_об_удержании_штрафа_шаблон_v_3.docx', 'rb').read(); open('template_data.py', 'w', encoding='utf-8').write('import base64\nTEMPLATE_B64 = (\n' + '\n'.join(f'    \"{base64.b64encode(data).decode(\"ascii\")[i:i+76]}\"' for i in range(0, len(base64.b64encode(data)), 76)) + '\n)\ndef get_template_bytes() -> bytes:\n    return base64.b64decode(TEMPLATE_B64)\n')"
   ```
+
+## Лицензия
+
+Проект распространяется под лицензией [MIT](LICENSE).
