@@ -156,6 +156,64 @@ def test_read_excel_missing_optional_columns(tmp_path):
     assert rec["email"] is None
 
 
+def test_coerce_date():
+    # Настоящая дата проходит как есть
+    dt = datetime.datetime(2026, 2, 1)
+    assert generator._coerce_date(dt) == dt
+    # datetime.date нормализуется в datetime
+    assert generator._coerce_date(datetime.date(2026, 2, 1)) == datetime.datetime(2026, 2, 1)
+    # Excel-серийник (1900 date system)
+    assert generator._coerce_date(46054) == datetime.datetime(2026, 2, 1)
+    # Текстовые форматы
+    assert generator._coerce_date("2026-02-01") == datetime.datetime(2026, 2, 1)
+    assert generator._coerce_date("01.02.2026") == datetime.datetime(2026, 2, 1)
+    # Нераспознаваемое -> None (а не падение)
+    assert generator._coerce_date("февраль 2026") is None
+    assert generator._coerce_date(None) is None
+    assert generator._coerce_date(True) is None
+
+
+def test_fill_template_unparseable_period_placeholder():
+    import io
+    record = {
+        "period": None,  # период не распознан read_excel
+        "inn": "1234567890",
+        "yl": "ООО \"Тест\"",
+        "fine": 10000.0,
+        "fraud_pct": 0.01,
+        "director": "Иванов Иван Иванович",
+        "ogrn": "1027700123456",
+        "email": "test@test.ru",
+    }
+    doc_bytes, warnings = generator.fill_template(record, datetime.datetime.now())
+    assert "Период не распознан" in warnings
+    doc_text = "".join(etree.fromstring(zipfile.ZipFile(io.BytesIO(doc_bytes)).read("word/document.xml")).itertext())
+    assert "[Период не указан]" in doc_text
+
+
+def test_read_excel_textual_period(tmp_path):
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Для соп-я"
+    headers = [
+        "Отчетный период", "ИНН", "ЮЛ", "Фрод, руб.",
+        "Штраф", "Решение (да/нет)", "% фрода от оборота",
+    ]
+    ws.append(headers)
+    # Период как текст в распознаваемом формате
+    ws.append(["01.02.2026", 1234567890, "ООО Тест", 1000, 5000, "да", 0.01])
+    # Период как нераспознаваемый текст -> None, но строка не теряется
+    ws.append(["неизвестно", 1234567890, "ООО Тест2", 1000, 5000, "да", 0.01])
+    excel_file = tmp_path / "test.xlsx"
+    wb.save(excel_file)
+
+    records = generator.read_excel(str(excel_file))
+    assert len(records) == 2
+    assert records[0]["period"] == datetime.datetime(2026, 2, 1)
+    assert records[1]["period"] is None
+
+
 def test_custom_signatory_injection():
     import io
     record = {

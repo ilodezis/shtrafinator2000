@@ -2,6 +2,7 @@ import datetime
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 from tkinter import filedialog
 
@@ -141,7 +142,10 @@ class App(customtkinter.CTk):
         self._build_ui()
 
     def _load_fonts(self):
-        font_dir = os.path.join(os.getcwd(), "fonts")
+        # Пишем шрифты в гарантированно доступную для записи временную папку,
+        # а не в текущий каталог запуска (для onefile-сборки cwd непредсказуем
+        # и может быть недоступен для записи).
+        font_dir = os.path.join(tempfile.gettempdir(), "shtrafinator2000_fonts")
         os.makedirs(font_dir, exist_ok=True)
 
         reg_path = os.path.join(font_dir, "Montserrat-Regular.ttf")

@@ -1,4 +1,3 @@
-import base64
 import datetime
 import io
 import os
@@ -24,7 +23,6 @@ HEADER_ANCHORS = {
     "period": [["отчетный", "период"]],
     "inn": [["инн"]],
     "yl": [["юл"]],
-    "turnover": [["оборот"]],
     "fraud_rub": [["фрод", "руб"]],
     "fine": [["штраф"]],
     "decision": [["решение"]],
@@ -44,6 +42,32 @@ def _header_matches(header: str, options: list[list[str]]) -> bool:
     return any(all(word in h for word in option) for option in options)
 
 
+def _coerce_date(value: Any) -> Optional[datetime.datetime]:
+    """Привести значение ячейки периода к datetime.
+
+    Возвращает None, если значение пустое или не распознаётся как дата,
+    чтобы вызывающий код мог подставить заглушку вместо аварии.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime.datetime):
+        return value
+    if isinstance(value, datetime.date):
+        return datetime.datetime(value.year, value.month, value.day)
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return datetime.datetime(1899, 12, 30) + datetime.timedelta(days=int(value))
+    if isinstance(value, str):
+        s = value.strip()
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y", "%Y/%m/%d", "%d/%m/%Y"):
+            try:
+                return datetime.datetime.strptime(s, fmt)
+            except ValueError:
+                continue
+    return None
+
+
 def _find_columns(ws: Any) -> dict[str, int]:
     mapping: dict[str, int] = {}
     for col in range(1, ws.max_column + 1):
@@ -55,7 +79,7 @@ def _find_columns(ws: Any) -> dict[str, int]:
             if field not in mapping and _header_matches(header, anchors):
                 mapping[field] = col
                 break
-    missing = set(HEADER_ANCHORS.keys()) - set(mapping.keys()) - {"turnover", "director", "ogrn", "email"}
+    missing = set(HEADER_ANCHORS.keys()) - set(mapping.keys()) - {"director", "ogrn", "email"}
     if missing:
         raise ValueError(
             f"В заголовках не найдены колонки: {', '.join(sorted(missing))}"
@@ -109,8 +133,9 @@ def read_excel(path: str) -> list[dict]:
         if any(v is None for v in [period, inn_val, yl, fine]):
             continue
 
-        if isinstance(period, (int, float)):
-            period = datetime.datetime(1899, 12, 30) + datetime.timedelta(days=int(period))
+        # period присутствует (прошёл проверку выше), но может быть текстом —
+        # _coerce_date вернёт None, если распознать дату не удалось.
+        period = _coerce_date(period)
 
         director_val = ws.cell(row=row, column=cols["director"]).value if "director" in cols else None
         ogrn_val = ws.cell(row=row, column=cols["ogrn"]).value if "ogrn" in cols else None
@@ -334,7 +359,11 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
     else:
         fraud_pct_str = "[% не указан]"
         warnings.append("% фрода не указан")
-    period_str = format_period(record["period"])
+    if record["period"] is not None:
+        period_str = format_period(record["period"])
+    else:
+        period_str = "[Период не указан]"
+        warnings.append("Период не распознан")
     fine_str = format_fine(record["fine"])
     date_str = format_date(letter_date)
     
@@ -353,10 +382,13 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
         warnings.append("Email не указан")
 
     template_bytes = template_data.get_template_bytes()
-    src = io.BytesIO(template_bytes)
-    zin = zipfile.ZipFile(src, "r")
-    xml_bytes = zin.read("word/document.xml")
-    root = etree.fromstring(xml_bytes)
+    # Читаем весь шаблон в память и сразу закрываем архив (через with),
+    # чтобы не оставлять открытый ZipFile при исключении ниже.
+    with zipfile.ZipFile(io.BytesIO(template_bytes), "r") as zin:
+        infos = zin.infolist()
+        contents = {info.filename: zin.read(info.filename) for info in infos}
+
+    root = etree.fromstring(contents["word/document.xml"])
 
     sdts = list(root.iter(W + "sdt"))
     if len(sdts) != 12:
@@ -405,11 +437,11 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
 
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
+        for item in infos:
             if item.filename == "word/document.xml":
                 zout.writestr(item, modified_xml)
             elif item.filename == "word/settings.xml":
-                settings_bytes = zin.read(item.filename)
+                settings_bytes = contents[item.filename]
                 try:
                     s_root = etree.fromstring(settings_bytes)
                     for dp in s_root.findall(W + "documentProtection"):
@@ -419,8 +451,7 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
                 except Exception:
                     zout.writestr(item, settings_bytes)
             else:
-                zout.writestr(item, zin.read(item.filename))
-    zin.close()
+                zout.writestr(item, contents[item.filename])
 
     return out.getvalue(), warnings
 
