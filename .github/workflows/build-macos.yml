@@ -40,14 +40,15 @@ jobs:
             --add-data "$CTK_PATH:customtkinter/" \
             main.py
 
-      - name: Compress App Bundle
+      - name: Create DMG Disk Image
         run: |
-          cd dist
-          zip -r "../Shtrafinator2000_macOS.zip" "Штрафинатор 2000.app"
+          mkdir dmg_root
+          cp -R "dist/Штрафинатор 2000.app" dmg_root/
+          hdiutil create -fs HFS+ -srcfolder dmg_root -volname "Штрафинатор 2000" "Shtrafinator_2000_macOS.dmg"
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: Shtrafinator2000_macOS.zip
+          files: Shtrafinator_2000_macOS.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
