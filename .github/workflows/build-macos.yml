@@ -32,10 +32,10 @@ jobs:
           # Locate customtkinter package path dynamically
           CTK_PATH=$(python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
           echo "CustomTkinter path: $CTK_PATH"
-          
-          # Run pyinstaller with colon separator for macOS
-          pyinstaller --windowed --onefile \
-            --name "Штрафинатор 2000" \
+
+          # Build as .app bundle (no --onefile — required for proper macOS .app structure)
+          pyinstaller --windowed \
+            --name "Shtrafinator_2000" \
             --icon "app.icns" \
             --add-data "$CTK_PATH:customtkinter/" \
             main.py
@@ -43,18 +43,18 @@ jobs:
       - name: Create DMG Disk Image
         run: |
           mkdir dmg_root
-          cp -R "dist/Штрафинатор 2000.app" dmg_root/
-          hdiutil create -fs HFS+ -srcfolder dmg_root -volname "Штрафинатор 2000" "Shtrafinator_2000_macOS.dmg"
+          cp -R "dist/Shtrafinator_2000.app" dmg_root/
+          hdiutil create -fs HFS+ -srcfolder dmg_root -volname "Shtrafinator 2000" "Shtrafinator_2000_macOS.dmg"
 
-      - name: Create Release and Upload macOS Asset
+      - name: Upload macOS DMG to Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Штрафинатор 2000 ${{ github.ref_name }}"
           body: |
             Автоматическая сборка приложения Штрафинатор 2000.
-            
+
             ### Как запустить:
-            * **Windows**: Скачайте и запустите `Штрафинатор 2000.exe`.
+            * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
             * **macOS**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы» (Applications).
           files: Shtrafinator_2000_macOS.dmg
         env:
@@ -83,25 +83,25 @@ jobs:
           # Locate customtkinter package path dynamically
           CTK_PATH=$(python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
           echo "CustomTkinter path: $CTK_PATH"
-          
-          # Run pyinstaller with semicolon separator for Windows
+
+          # Latin name avoids Windows path issues with Cyrillic characters
           pyinstaller --noconsole --onefile \
-            --name "Штрафинатор 2000" \
+            --name "Shtrafinator_2000" \
             --icon "app.ico" \
             --add-data "app.ico;." \
             --add-data "$CTK_PATH;customtkinter/" \
             main.py
 
-      - name: Create Release and Upload Windows Asset
+      - name: Upload Windows EXE to Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Штрафинатор 2000 ${{ github.ref_name }}"
           body: |
             Автоматическая сборка приложения Штрафинатор 2000.
-            
+
             ### Как запустить:
-            * **Windows**: Скачайте и запустите `Штрафинатор 2000.exe`.
+            * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
             * **macOS**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы» (Applications).
-          files: dist/Штрафинатор 2000.exe
+          files: dist/Shtrafinator_2000.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
