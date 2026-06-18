@@ -49,6 +49,11 @@ jobs:
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
+          name: "Штрафинатор 2000 v${{ github.ref_name }}"
+          body: |
+            Автоматическая сборка приложения Штрафинатор 2000 для macOS.
+            
+            Для запуска смонтируйте DMG-образ и скопируйте приложение в папку Программы.
           files: Shtrafinator_2000_macOS.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
