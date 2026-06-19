@@ -240,3 +240,52 @@ def test_custom_signatory_injection():
     doc_text = "".join(etree.fromstring(zin.read('word/document.xml')).itertext())
     assert "____________/Петров П.П." in doc_text
     zin.close()
+
+
+def test_template_spacing_and_alignment():
+    record = {
+        "period": datetime.datetime(2026, 2, 1),
+        "inn": "344708426365",
+        "yl": "ООО \"Атлантик Айти\"",
+        "fine": 30000.0,
+        "fraud_pct": 0.0186,
+        "director": "Боваренко Сергей Владимирович",
+        "ogrn": "1234567890123",
+        "email": "test@atlantic.it"
+    }
+    doc_bytes, _ = generator.fill_template(record, datetime.datetime.now())
+    
+    import io
+    zin = zipfile.ZipFile(io.BytesIO(doc_bytes), 'r')
+    doc_xml = zin.read('word/document.xml')
+    zin.close()
+    
+    root = etree.fromstring(doc_xml)
+    W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+    
+    # 1. Verify Table 0 width is modified (Column 0: 5845, Column 1: 3500)
+    tbls = root.findall('.//' + W + 'tbl')
+    assert len(tbls) >= 1
+    tbl0 = tbls[0]
+    tblGrid = tbl0.find(W + 'tblGrid')
+    assert tblGrid is not None
+    gridCols = tblGrid.findall(W + 'gridCol')
+    assert len(gridCols) >= 2
+    assert gridCols[0].get(W + 'w') == '5845'
+    assert gridCols[1].get(W + 'w') == '3500'
+    
+    row = tbl0.find('.//' + W + 'tr')
+    cells = row.findall(W + 'tc')
+    assert len(cells) >= 2
+    assert cells[0].find('.//' + W + 'tcW').get(W + 'w') == '5845'
+    assert cells[1].find('.//' + W + 'tcW').get(W + 'w') == '3500'
+    
+    # 2. Verify double space in OGRN is removed (should be exactly 'ОГРН 1234567890123')
+    doc_text = "".join(root.itertext())
+    assert "ОГРН  " not in doc_text
+    assert "ОГРН 1234567890123" in doc_text
+    
+    # 3. Verify double space in conditions is removed (should be '– «Условия»' instead of '–  «Условия»')
+    assert "–  «Условия»" not in doc_text
+    assert "– «Условия»" in doc_text
+
