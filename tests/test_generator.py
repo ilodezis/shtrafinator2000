@@ -81,6 +81,105 @@ def test_document_protection_removed():
     zin.close()
 
 
+def test_rubles_in_words_units():
+    # Окончание рубля зависит от последней цифры
+    assert generator.rubles_in_words(0) == "ноль рублей"
+    assert generator.rubles_in_words(1) == "один рубль"
+    assert generator.rubles_in_words(2) == "два рубля"
+    assert generator.rubles_in_words(4) == "четыре рубля"
+    assert generator.rubles_in_words(5) == "пять рублей"
+    assert generator.rubles_in_words(9) == "девять рублей"
+
+
+def test_rubles_in_words_teens_exception():
+    # 11-14 — исключение: всегда «рублей», хотя цифры 1-4
+    assert generator.rubles_in_words(11) == "одиннадцать рублей"
+    assert generator.rubles_in_words(12) == "двенадцать рублей"
+    assert generator.rubles_in_words(13) == "тринадцать рублей"
+    assert generator.rubles_in_words(14) == "четырнадцать рублей"
+    assert generator.rubles_in_words(15) == "пятнадцать рублей"
+    # А 111-114 — то же самое исключение уровнем выше
+    assert generator.rubles_in_words(111) == "сто одиннадцать рублей"
+    assert generator.rubles_in_words(112) == "сто двенадцать рублей"
+    # 21/22 исключением уже НЕ являются
+    assert generator.rubles_in_words(21) == "двадцать один рубль"
+    assert generator.rubles_in_words(22) == "двадцать два рубля"
+
+
+def test_rubles_in_words_thousands_gender():
+    # Тысяча женского рода: «однА тысяча», «двЕ тысячи» — не «один/два»
+    assert generator.rubles_in_words(1000) == "одна тысяча рублей"
+    assert generator.rubles_in_words(2000) == "две тысячи рублей"
+    assert generator.rubles_in_words(5000) == "пять тысяч рублей"
+    assert generator.rubles_in_words(21000) == "двадцать одна тысяча рублей"
+    assert generator.rubles_in_words(22000) == "двадцать две тысячи рублей"
+    # Исключение 11-14 внутри разряда тысяч
+    assert generator.rubles_in_words(11000) == "одиннадцать тысяч рублей"
+    assert generator.rubles_in_words(14000) == "четырнадцать тысяч рублей"
+    # Рубли мужского рода, тысячи женского — в одном числе
+    assert generator.rubles_in_words(1001) == "одна тысяча один рубль"
+    assert generator.rubles_in_words(2002) == "две тысячи два рубля"
+
+
+def test_rubles_in_words_millions_gender():
+    # Миллион/миллиард мужского рода: «один/два», а не «одна/две»
+    assert generator.rubles_in_words(1_000_000) == "один миллион рублей"
+    assert generator.rubles_in_words(2_000_000) == "два миллиона рублей"
+    assert generator.rubles_in_words(5_000_000) == "пять миллионов рублей"
+    assert generator.rubles_in_words(1_000_000_000) == "один миллиард рублей"
+    assert generator.rubles_in_words(2_000_000_001) == "два миллиарда один рубль"
+
+
+def test_rubles_in_words_zero_triads():
+    # Пропуск нулевых разрядов, но слово «рублей» остаётся
+    assert generator.rubles_in_words(100) == "сто рублей"
+    assert generator.rubles_in_words(1_000_100) == "один миллион сто рублей"
+    assert generator.rubles_in_words(30000) == "тридцать тысяч рублей"
+    assert generator.rubles_in_words(2_500_000) == "два миллиона пятьсот тысяч рублей"
+    assert (
+        generator.rubles_in_words(999_999_999)
+        == "девятьсот девяносто девять миллионов девятьсот девяносто девять тысяч "
+           "девятьсот девяносто девять рублей"
+    )
+
+
+def test_rubles_in_words_rejects_out_of_range():
+    # Отрицательная сумма — ошибка данных, а не «минус пять рублей» в документе
+    with pytest.raises(ValueError):
+        generator.rubles_in_words(-5)
+    # Заведомо невозможная сумма не должна падать с невнятной ошибкой
+    with pytest.raises(ValueError):
+        generator.rubles_in_words(10 ** 15)
+
+
+def test_format_fine_with_words():
+    # Формат: цифры + руб. + сумма прописью в скобках, точка закрывает предложение шаблона
+    assert generator.format_fine(243322) == "243 322 руб. (двести сорок три тысячи триста двадцать два рубля)."
+    assert generator.format_fine(30000.0) == "30 000 руб. (тридцать тысяч рублей)."
+    assert generator.format_fine(1) == "1 руб. (один рубль)."
+    # Копейки округляются до целых рублей — и цифры, и пропись должны сойтись
+    assert generator.format_fine(1000.49) == "1 000 руб. (одна тысяча рублей)."
+    assert generator.format_fine(1000.5) == "1 000 руб. (одна тысяча рублей)."  # банковское округление
+    assert generator.format_fine(1001.5) == "1 002 руб. (одна тысяча два рубля)."
+
+
+def test_fill_template_fine_in_words():
+    import io
+    record = {
+        "period": datetime.datetime(2026, 2, 1),
+        "inn": "1234567890",
+        "yl": "ООО \"Тест\"",
+        "fine": 243322.0,
+        "fraud_pct": 0.01,
+        "director": "Иванов Иван Иванович",
+        "ogrn": "1027700123456",
+        "email": "test@test.ru",
+    }
+    doc_bytes, _ = generator.fill_template(record, datetime.datetime.now())
+    doc_text = "".join(etree.fromstring(zipfile.ZipFile(io.BytesIO(doc_bytes)).read("word/document.xml")).itertext())
+    assert "в размере 243 322 руб. (двести сорок три тысячи триста двадцать два рубля)." in doc_text
+
+
 def test_header_matches():
     # Test AND logic
     assert generator._header_matches("Отчетный период", [["отчетный", "период"]])

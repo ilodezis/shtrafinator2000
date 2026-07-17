@@ -19,6 +19,28 @@ MONTHS_NOM = {
     9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь",
 }
 
+UNITS_M = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+UNITS_F = ["", "одна", "две", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"]
+TEENS = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать",
+         "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"]
+TENS = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят",
+        "семьдесят", "восемьдесят", "девяносто"]
+HUNDREDS = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот",
+            "семьсот", "восемьсот", "девятьсот"]
+
+# Разряды от младшего к старшему: формы слова для 1 / 2 / 5 и род разряда.
+# Род важен: тысяча женского рода («одна тысяча», «две тысячи»),
+# рубль и миллион — мужского («один рубль», «два миллиона»).
+SCALES: list[tuple[tuple[str, str, str], str]] = [
+    (("рубль", "рубля", "рублей"), "m"),
+    (("тысяча", "тысячи", "тысяч"), "f"),
+    (("миллион", "миллиона", "миллионов"), "m"),
+    (("миллиард", "миллиарда", "миллиардов"), "m"),
+    (("триллион", "триллиона", "триллионов"), "m"),
+]
+
+MAX_FINE = 1000 ** len(SCALES) - 1
+
 HEADER_ANCHORS = {
     "period": [["отчетный", "период"]],
     "inn": [["инн"]],
@@ -156,10 +178,72 @@ def read_excel(path: str) -> list[dict]:
     return records
 
 
+def _plural_form(n: int, forms: tuple[str, str, str]) -> str:
+    """Выбрать форму слова для количества n: рубль / рубля / рублей."""
+    # 11-14 — исключение: несмотря на последнюю цифру 1-4, форма как у 5+
+    if 11 <= n % 100 <= 14:
+        return forms[2]
+    last = n % 10
+    if last == 1:
+        return forms[0]
+    if 2 <= last <= 4:
+        return forms[1]
+    return forms[2]
+
+
+def _triad_words(n: int, gender: str) -> list[str]:
+    """Слова для числа 1..999 в нужном роде."""
+    units = UNITS_F if gender == "f" else UNITS_M
+    words: list[str] = []
+    if n // 100:
+        words.append(HUNDREDS[n // 100])
+    rest = n % 100
+    if 10 <= rest <= 19:
+        words.append(TEENS[rest - 10])
+    else:
+        if rest // 10:
+            words.append(TENS[rest // 10])
+        if rest % 10:
+            words.append(units[rest % 10])
+    return words
+
+
+def rubles_in_words(amount: int) -> str:
+    """Целое число рублей прописью: 243322 -> 'двести сорок три тысячи триста двадцать два рубля'."""
+    if amount < 0:
+        raise ValueError(f"Сумма штрафа не может быть отрицательной: {amount}")
+    if amount > MAX_FINE:
+        raise ValueError(f"Сумма штрафа слишком велика для прописи: {amount}")
+    if amount == 0:
+        return "ноль рублей"
+
+    triads: list[int] = []
+    n = amount
+    while n:
+        triads.append(n % 1000)
+        n //= 1000
+
+    words: list[str] = []
+    for i in range(len(triads) - 1, -1, -1):
+        triad = triads[i]
+        if triad == 0:
+            continue
+        forms, gender = SCALES[i]
+        words += _triad_words(triad, gender)
+        words.append(_plural_form(triad, forms))
+
+    # Если младшая триада нулевая (напр. 1 000 000), слово «рублей» выше не добавилось
+    if triads[0] == 0:
+        words.append(SCALES[0][0][2])
+
+    return " ".join(words)
+
+
 def format_fine(value: float) -> str:
+    # Точка на конце закрывает предложение шаблона: скобка сама его не закрывает
     rounded = round(value)
     formatted = f"{rounded:,}".replace(",", " ")
-    return f"{formatted} руб."
+    return f"{formatted} руб. ({rubles_in_words(rounded)})."
 
 
 def format_fraud_pct(value: float) -> str:
