@@ -243,7 +243,8 @@ def format_fine(value: float) -> str:
     # Точка на конце закрывает предложение шаблона: скобка сама его не закрывает
     rounded = round(value)
     formatted = f"{rounded:,}".replace(",", " ")
-    return f"{formatted} руб. ({rubles_in_words(rounded)})."
+    # Штраф всегда округляется до целых рублей, поэтому копейки в прописи — всегда «00»
+    return f"{formatted} руб. ({rubles_in_words(rounded)} 00 копеек)."
 
 
 def format_fraud_pct(value: float) -> str:

@@ -153,14 +153,14 @@ def test_rubles_in_words_rejects_out_of_range():
 
 
 def test_format_fine_with_words():
-    # Формат: цифры + руб. + сумма прописью в скобках, точка закрывает предложение шаблона
-    assert generator.format_fine(243322) == "243 322 руб. (двести сорок три тысячи триста двадцать два рубля)."
-    assert generator.format_fine(30000.0) == "30 000 руб. (тридцать тысяч рублей)."
-    assert generator.format_fine(1) == "1 руб. (один рубль)."
-    # Копейки округляются до целых рублей — и цифры, и пропись должны сойтись
-    assert generator.format_fine(1000.49) == "1 000 руб. (одна тысяча рублей)."
-    assert generator.format_fine(1000.5) == "1 000 руб. (одна тысяча рублей)."  # банковское округление
-    assert generator.format_fine(1001.5) == "1 002 руб. (одна тысяча два рубля)."
+    # Формат: цифры + руб. + сумма прописью в скобках + «00 копеек», точка закрывает предложение шаблона
+    assert generator.format_fine(243322) == "243 322 руб. (двести сорок три тысячи триста двадцать два рубля 00 копеек)."
+    assert generator.format_fine(30000.0) == "30 000 руб. (тридцать тысяч рублей 00 копеек)."
+    assert generator.format_fine(1) == "1 руб. (один рубль 00 копеек)."
+    # Копейки округляются до целых рублей — и цифры, и пропись должны сойтись, копейки прописью всегда «00»
+    assert generator.format_fine(1000.49) == "1 000 руб. (одна тысяча рублей 00 копеек)."
+    assert generator.format_fine(1000.5) == "1 000 руб. (одна тысяча рублей 00 копеек)."  # банковское округление
+    assert generator.format_fine(1001.5) == "1 002 руб. (одна тысяча два рубля 00 копеек)."
 
 
 def test_fill_template_fine_in_words():
@@ -177,7 +177,7 @@ def test_fill_template_fine_in_words():
     }
     doc_bytes, _ = generator.fill_template(record, datetime.datetime.now())
     doc_text = "".join(etree.fromstring(zipfile.ZipFile(io.BytesIO(doc_bytes)).read("word/document.xml")).itertext())
-    assert "в размере 243 322 руб. (двести сорок три тысячи триста двадцать два рубля)." in doc_text
+    assert "в размере 243 322 руб. (двести сорок три тысячи триста двадцать два рубля 00 копеек)." in doc_text
 
 
 def test_header_matches():
