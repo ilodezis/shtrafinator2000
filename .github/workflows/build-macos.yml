@@ -78,13 +78,7 @@ jobs:
             --version "$VERSION" \
             "Shtrafinator_2000_macOS.pkg"
 
-      - name: Create DMG Disk Image
-        run: |
-          mkdir dmg_root
-          cp -R "dist/Shtrafinator_2000.app" dmg_root/
-          hdiutil create -fs HFS+ -srcfolder dmg_root -volname "Shtrafinator 2000" "Shtrafinator_2000_macOS.dmg"
-
-      - name: Upload macOS Artifacts to Release
+      - name: Upload macOS PKG to Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Штрафинатор 2000 ${{ github.ref_name }}"
@@ -92,12 +86,9 @@ jobs:
             Автоматическая сборка приложения Штрафинатор 2000.
 
             ### Как запустить:
-            * **macOS (Рекомендуется)**: Скачайте и установите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
-            * **macOS (DMG)**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы».
+            * **macOS**: Скачайте и запустите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
             * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
-          files: |
-            Shtrafinator_2000_macOS.pkg
-            Shtrafinator_2000_macOS.dmg
+          files: Shtrafinator_2000_macOS.pkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -151,8 +142,7 @@ jobs:
             Автоматическая сборка приложения Штрафинатор 2000.
 
             ### Как запустить:
-            * **macOS (Рекомендуется)**: Скачайте и установите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
-            * **macOS (DMG)**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы».
+            * **macOS**: Скачайте и запустите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
             * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
           files: dist/Shtrafinator_2000.exe
         env:
