@@ -243,8 +243,9 @@ export default function App() {
           <img
             src="./logo.png"
             alt="CloudPayments"
-            className="w-8 h-8 rounded-lg shadow-xs object-contain"
+            className="w-8 h-8 object-contain"
           />
+
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base tracking-tight text-slate-900 font-sans">
@@ -686,7 +687,8 @@ export default function App() {
           <div className="w-[620px] max-w-full max-h-[85vh] bg-white border border-slate-200 rounded-2xl shadow-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <img src="./logo.png" alt="CloudPayments" className="w-6 h-6 rounded object-contain" />
+                <img src="./logo.png" alt="CloudPayments" className="w-6 h-6 object-contain" />
+
                 <h3 className="font-bold text-sm text-slate-900">Регламент работы и логика генератора</h3>
               </div>
               <button
