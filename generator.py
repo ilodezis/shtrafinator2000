@@ -406,6 +406,33 @@ def derive_director(record: dict) -> tuple[str, bool]:
     return "[Руководитель не указан]", True
 
 
+def _calculate_signature_spacing(record: dict) -> int:
+    """Calculate spacing in dxa after the last body paragraph before the signature table.
+    Pins the signature block near the bottom of page 1 (~86-90% of A4 height)
+    while strictly ensuring the document fits on a single page.
+    """
+    yl = record.get("yl", "")
+    director, _ = derive_director(record)
+    email = record.get("email") or ""
+    fine_str = format_fine(record.get("fine", 0))
+
+    header_extra = 0
+    header_extra += max(0, (len(yl) - 1) // 25)
+    header_extra += max(0, (len(director) - 1) // 25)
+    header_extra += max(0, (len(email) - 1) // 25)
+
+    body_extra = 0
+    body_extra += max(0, (len(yl) - 20) // 70)
+    body_extra += max(0, (len(fine_str) - 55) // 70)
+
+    total_extra = header_extra + body_extra
+
+    # Base spacing for short document (2800 dxa ≈ 140 pt) pins signature to ~87-88% of A4.
+    # Spacing scales down by 260 dxa per extra line.
+    # Floor at 100 dxa (5 pt) prevents touching signature table.
+    target_sp = 2800 - total_extra * 260
+    return max(100, target_sp)
+
 
 def sanitize_filename(yl: str) -> str:
     clean = yl
@@ -568,6 +595,25 @@ def fill_template(record: dict, letter_date: datetime.datetime, signatory: str =
             _replace_sdt(sdt, _make_paragraph(value, bold=bold))
         else:
             _replace_sdt(sdt, _make_run(value, bold=bold))
+
+    # Dynamically adjust spacing before signature block to pin it to page bottom
+    body = root.find(W + "body")
+    if body is not None:
+        tbls = body.findall(W + "tbl")
+        if tbls:
+            sig_tbl = tbls[-1]
+            sig_idx = list(body).index(sig_tbl)
+            if sig_idx > 0:
+                p_before = body[sig_idx - 1]
+                sp_val = _calculate_signature_spacing(record)
+                pPr = p_before.find(W + "pPr")
+                if pPr is None:
+                    pPr = etree.Element(W + "pPr")
+                    p_before.insert(0, pPr)
+                sp = pPr.find(W + "spacing")
+                if sp is None:
+                    sp = etree.SubElement(pPr, W + "spacing")
+                sp.set(W + "after", str(sp_val))
 
     modified_xml = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
 

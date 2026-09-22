@@ -427,3 +427,70 @@ def test_inspect_excel(tmp_path):
     assert len(meta["sample_records"]) == 1
     assert meta["sample_records"][0]["yl"] == "ООО Альфа"
 
+
+def test_calculate_signature_spacing():
+    # Short record -> maximum spacing around 2800 dxa (~140 pt)
+    short_rec = {"yl": "ООО «Ромашка»", "fine": 50000.0}
+    assert generator._calculate_signature_spacing(short_rec) == 2800
+
+    # Medium record -> reduced spacing
+    med_rec = {
+        "yl": "ООО «АВТОТРАНСПОРТНЫЕ СИСТЕМЫ И ТЕХНОЛОГИИ»",
+        "fine": 345678.0,
+        "director": "Константинов Александр Сергеевич",
+    }
+    sp_med = generator._calculate_signature_spacing(med_rec)
+    assert 1800 <= sp_med < 2800
+
+    # Very long record -> scaled down to keep document on 1 page
+    long_rec = {
+        "yl": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «МЕЖДУНАРОДНЫЕ ЛОГИСТИЧЕСКИЕ СИСТЕМЫ И ЦИФРОВЫЕ СЕРВИСЫ ДЛЯ ЭЛЕКТРОННОЙ КОММЕРЦИИ»",
+        "fine": 12894567.0,
+        "director": "Константинопольский-Владимирский Вениамин Александрович",
+        "email": "headquarters-billing-department@international-logistics-ecommerce-group.com",
+    }
+    sp_long = generator._calculate_signature_spacing(long_rec)
+    assert sp_long < sp_med
+    assert sp_long >= 100
+
+    # Extreme record -> reaches minimum floor of 100 dxa (5 pt)
+    extreme_rec = {
+        "yl": "О" * 200,
+        "fine": 999_999_999.0,
+        "director": "И" * 100,
+        "email": "e" * 100,
+    }
+    assert generator._calculate_signature_spacing(extreme_rec) == 100
+
+
+def test_fill_template_signature_spacing():
+    import io
+    record = {
+        "period": datetime.datetime(2026, 2, 1),
+        "inn": "7701234567",
+        "yl": "ООО «Ромашка»",
+        "fine": 50000.0,
+        "fraud_pct": 0.01,
+        "director": "Иванов Иван Иванович",
+        "ogrn": "1027700123456",
+        "email": "test@romashka.ru",
+    }
+    doc_bytes, _ = generator.fill_template(record, datetime.datetime.now(), "Жаворонкина А.М.")
+
+    zin = zipfile.ZipFile(io.BytesIO(doc_bytes), "r")
+    doc_xml = zin.read("word/document.xml")
+    zin.close()
+
+    root = etree.fromstring(doc_xml)
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    body = root.find(W + "body")
+    tbls = body.findall(W + "tbl")
+    sig_tbl = tbls[-1]
+    sig_idx = list(body).index(sig_tbl)
+    p_before = body[sig_idx - 1]
+
+    sp = p_before.find(".//" + W + "spacing")
+    assert sp is not None
+    assert sp.get(W + "after") == "2800"
+
+
