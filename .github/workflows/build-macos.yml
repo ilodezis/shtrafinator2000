@@ -16,6 +16,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,15 +42,11 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          # Locate customtkinter package path dynamically
-          CTK_PATH=$(python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
-          echo "CustomTkinter path: $CTK_PATH"
-
           # Build as .app bundle (no --onefile — required for proper macOS .app structure)
           pyinstaller --windowed \
             --name "Shtrafinator_2000" \
             --icon "app.icns" \
-            --add-data "$CTK_PATH:customtkinter/" \
+            --add-data "frontend/dist:frontend/dist" \
             main.py
 
       - name: Create DMG Disk Image
@@ -66,6 +75,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -80,16 +103,12 @@ jobs:
       - name: Build with PyInstaller
         shell: bash
         run: |
-          # Locate customtkinter package path dynamically
-          CTK_PATH=$(python -c "import customtkinter, os; print(os.path.dirname(customtkinter.__file__))")
-          echo "CustomTkinter path: $CTK_PATH"
-
           # Latin name avoids Windows path issues with Cyrillic characters
           pyinstaller --noconsole --onefile \
             --name "Shtrafinator_2000" \
             --icon "app.ico" \
             --add-data "app.ico;." \
-            --add-data "$CTK_PATH;customtkinter/" \
+            --add-data "frontend/dist;frontend/dist" \
             main.py
 
       - name: Upload Windows EXE to Release

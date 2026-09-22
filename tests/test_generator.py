@@ -388,3 +388,42 @@ def test_template_spacing_and_alignment():
     assert "–  «Условия»" not in doc_text
     assert "– «Условия»" in doc_text
 
+
+def test_inspect_excel(tmp_path):
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Для соп-я"
+
+    headers = [
+        "Отчетный период", "ИНН", "ЮЛ", "Оборот, руб.", "Фрод, руб.",
+        "Штраф", "Решение (да/нет)", "% фрода от оборота",
+        "Директор", "ОГРН", "Email"
+    ]
+    ws.append(headers)
+
+    ws.append([
+        "2026-02-01", 1234567890, "ООО Альфа", 100000, 1000,
+        5000, "да", 0.01,
+        "Иванов Иван Иванович", 1027700123456, "alfa@test.ru"
+    ])
+    ws.append([
+        "2026-02-01", 9876543210, "ООО Бета (отклонен)", 100000, 1000,
+        7000, "нет", 0.01,
+        "Петров Петр Петрович", 1027700999999, "beta@test.ru"
+    ])
+
+    excel_file = tmp_path / "inspect_test.xlsx"
+    wb.save(excel_file)
+
+    meta = generator.inspect_excel(str(excel_file))
+    assert meta["sheet_name"] == "Для соп-я"
+    assert meta["total_rows"] == 2
+    assert meta["valid_rows_count"] == 1
+    assert meta["total_fine_sum"] == 5000.0
+    assert meta["has_optional_columns"]["director"] is True
+    assert meta["has_optional_columns"]["ogrn"] is True
+    assert meta["has_optional_columns"]["email"] is True
+    assert len(meta["sample_records"]) == 1
+    assert meta["sample_records"][0]["yl"] == "ООО Альфа"
+

@@ -178,6 +178,57 @@ def read_excel(path: str) -> list[dict]:
     return records
 
 
+def inspect_excel(path: str) -> dict[str, Any]:
+    """Быстрый анализ Excel-файла для вывода превью в интерфейсе."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Файл не найден: {path}")
+
+    wb = openpyxl.load_workbook(path, data_only=True)
+
+    sheet_name = None
+    for name in wb.sheetnames:
+        if name == "Для соп-я":
+            sheet_name = name
+            break
+    if sheet_name is None:
+        for name in wb.sheetnames:
+            if "соп" in name.lower():
+                sheet_name = name
+                break
+    if sheet_name is None:
+        raise ValueError(
+            f"Лист «Для соп-я» не найден. Доступные листы: {', '.join(wb.sheetnames)}"
+        )
+
+    ws = wb[sheet_name]
+    cols = _find_columns(ws)
+
+    records = read_excel(path)
+    total_fine = sum(r["fine"] for r in records)
+
+    return {
+        "sheet_name": sheet_name,
+        "total_rows": (ws.max_row - 1) if ws.max_row and ws.max_row > 1 else 0,
+        "valid_rows_count": len(records),
+        "total_fine_sum": total_fine,
+        "columns_found": list(cols.keys()),
+        "has_optional_columns": {
+            "director": "director" in cols,
+            "ogrn": "ogrn" in cols,
+            "email": "email" in cols,
+        },
+        "sample_records": [
+            {
+                "yl": r["yl"],
+                "inn": r["inn"],
+                "fine": r["fine"],
+                "director": r.get("director") or "—",
+            }
+            for r in records[:5]
+        ],
+    }
+
+
 def _plural_form(n: int, forms: tuple[str, str, str]) -> str:
     """Выбрать форму слова для количества n: рубль / рубля / рублей."""
     # 11-14 — исключение: несмотря на последнюю цифру 1-4, форма как у 5+
