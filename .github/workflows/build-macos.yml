@@ -48,6 +48,35 @@ jobs:
             --icon "app.icns" \
             --add-data "frontend/dist:frontend/dist" \
             main.py
+          codesign --force --deep --sign - "dist/Shtrafinator_2000.app"
+
+      - name: Build macOS PKG Installer
+        run: |
+          mkdir -p packaging/scripts
+          cat << 'EOF' > packaging/scripts/postinstall
+          #!/bin/bash
+          # Automatically strip quarantine from the installed application
+          xattr -cr /Applications/Shtrafinator_2000.app 2>/dev/null || true
+          chmod -R 755 /Applications/Shtrafinator_2000.app 2>/dev/null || true
+          exit 0
+          EOF
+          chmod +x packaging/scripts/postinstall
+
+          mkdir -p pkg_root
+          cp -R "dist/Shtrafinator_2000.app" pkg_root/
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="1.0.3"
+          fi
+
+          pkgbuild \
+            --root pkg_root \
+            --install-location "/Applications" \
+            --scripts packaging/scripts \
+            --identifier "com.cloudpayments.shtrafinator2000" \
+            --version "$VERSION" \
+            "Shtrafinator_2000_macOS.pkg"
 
       - name: Create DMG Disk Image
         run: |
@@ -55,7 +84,7 @@ jobs:
           cp -R "dist/Shtrafinator_2000.app" dmg_root/
           hdiutil create -fs HFS+ -srcfolder dmg_root -volname "Shtrafinator 2000" "Shtrafinator_2000_macOS.dmg"
 
-      - name: Upload macOS DMG to Release
+      - name: Upload macOS Artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           name: "Штрафинатор 2000 ${{ github.ref_name }}"
@@ -63,9 +92,12 @@ jobs:
             Автоматическая сборка приложения Штрафинатор 2000.
 
             ### Как запустить:
+            * **macOS (Рекомендуется)**: Скачайте и установите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
+            * **macOS (DMG)**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы».
             * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
-            * **macOS**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы» (Applications).
-          files: Shtrafinator_2000_macOS.dmg
+          files: |
+            Shtrafinator_2000_macOS.pkg
+            Shtrafinator_2000_macOS.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -119,8 +151,9 @@ jobs:
             Автоматическая сборка приложения Штрафинатор 2000.
 
             ### Как запустить:
+            * **macOS (Рекомендуется)**: Скачайте и установите `Shtrafinator_2000_macOS.pkg`. Установщик скопирует программу в «Программы» и автоматически снимет карантин macOS.
+            * **macOS (DMG)**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы».
             * **Windows**: Скачайте и запустите `Shtrafinator_2000.exe`.
-            * **macOS**: Скачайте и смонтируйте образ `Shtrafinator_2000_macOS.dmg`, затем перетащите приложение в папку «Программы» (Applications).
           files: dist/Shtrafinator_2000.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
