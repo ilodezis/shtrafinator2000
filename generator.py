@@ -438,9 +438,9 @@ def _make_run(text: str, bold: bool = False) -> etree._Element:
     if bold:
         etree.SubElement(rpr, W + "b")
     sz = etree.SubElement(rpr, W + "sz")
-    sz.set(W + "val", "24")
+    sz.set(W + "val", "22")
     szCs = etree.SubElement(rpr, W + "szCs")
-    szCs.set(W + "val", "24")
+    szCs.set(W + "val", "22")
     t = etree.SubElement(r, W + "t")
     t.text = text
     if text and (text[0] == " " or text[-1] == " "):
@@ -459,9 +459,9 @@ def _make_paragraph(text: str, bold: bool = False) -> etree._Element:
     if bold:
         etree.SubElement(rpr, W + "b")
     sz = etree.SubElement(rpr, W + "sz")
-    sz.set(W + "val", "24")
+    sz.set(W + "val", "22")
     szCs = etree.SubElement(rpr, W + "szCs")
-    szCs.set(W + "val", "24")
+    szCs.set(W + "val", "22")
     r = _make_run(text, bold=bold)
     p.append(r)
     return p

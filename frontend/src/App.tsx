@@ -18,7 +18,8 @@ import {
   X
 } from 'lucide-react';
 
-import type { PreflightInspection, GenerationItemResult, RuleItem } from './types/pywebview';
+import type { PreflightInspection, GenerationItemResult, RuleItem, ScanItemResult, ScanRenameResult } from './types/pywebview';
+import ScanRenamer from './components/ScanRenamer';
 
 // Fallback Mock API when opened in browser directly
 const mockApi = {
@@ -42,6 +43,45 @@ const mockApi = {
     { filename: "ИП Смирнов А. В..docx", success: true, warnings: ["Email не указан — оставлена редактируемая заглушка"] },
     { filename: "ООО Вектор Финанс.docx", success: true, warnings: ["Руководитель не указан — оставлена заглушка"] },
   ],
+  select_scans_dir: async () => "/Users/cloud/Documents/Готовые_Уведомления/сканы",
+  analyze_scans: async (_dir: string): Promise<ScanItemResult[]> => [
+    {
+      original_name: "SKM_C25822092212000.pdf",
+      original_path: "/Users/cloud/Documents/Готовые_Уведомления/сканы/SKM_C25822092212000.pdf",
+      proposed_name: "ООО Ритейл Групп.pdf",
+      company_name: "ООО «Ритейл Групп»",
+      inn: "7701234567",
+      method: "body",
+      confidence: 0.95,
+      status: "matched",
+    },
+    {
+      original_name: "SKM_C25822092212001.pdf",
+      original_path: "/Users/cloud/Documents/Готовые_Уведомления/сканы/SKM_C25822092212001.pdf",
+      proposed_name: "ИП Смирнов А. В..pdf",
+      company_name: "ИП Смирнов А. В.",
+      inn: "502409876543",
+      method: "header",
+      confidence: 0.85,
+      status: "matched",
+    },
+    {
+      original_name: "SKM_C25822092212002.pdf",
+      original_path: "/Users/cloud/Documents/Готовые_Уведомления/сканы/SKM_C25822092212002.pdf",
+      proposed_name: "SKM_C25822092212002.pdf",
+      company_name: "—",
+      inn: "—",
+      method: "unknown",
+      confidence: 0.0,
+      status: "unrecognized",
+    },
+  ],
+  apply_scan_renames: async (items: ScanItemResult[]): Promise<ScanRenameResult[]> =>
+    items.map(item => ({
+      original_name: item.original_name,
+      new_name: item.proposed_name,
+      success: true,
+    })),
   open_path: async () => true,
   get_rules: async (): Promise<RuleItem[]> => [
     { title: "Отбор контрагентов", body: "Программа обрабатывает только те строки из листа «Для соп-я», у которых в колонке «Решение» написано «да» (в любом регистре). Все остальные строки пропускаются." },
@@ -60,6 +100,7 @@ const getApi = () => {
 };
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<'generator' | 'scans'>('generator');
   const [excelPath, setExcelPath] = useState<string>('');
   const [outputDir, setOutputDir] = useState<string>('');
   const [signatory, setSignatory] = useState<string>('');
@@ -261,6 +302,32 @@ export default function App() {
           </div>
         </div>
 
+        {/* Navigation Mode Switcher */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+          <button
+            onClick={() => setActiveTab('generator')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
+              activeTab === 'generator'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-cloud-500" />
+            <span>Генератор Word</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('scans')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
+              activeTab === 'scans'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5 text-cloud-500" />
+            <span>Переименование сканов</span>
+          </button>
+        </div>
+
         <div className="flex items-center gap-3">
           {/* Security badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/80 border border-slate-200 text-xs text-slate-600">
@@ -279,8 +346,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Dual-Pane Workbench */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Content Pane */}
+      {activeTab === 'generator' ? (
+        <div className="flex flex-1 overflow-hidden">
         {/* LEFT PANE: Clean Configuration Panel */}
         <div className="w-[430px] flex-shrink-0 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
           <div className="p-5 space-y-5">
@@ -680,6 +748,9 @@ export default function App() {
           </div>
         </div>
       </div>
+      ) : (
+        <ScanRenamer outputDir={outputDir} />
+      )}
 
       {/* Rules Modal */}
       {rulesOpen && (

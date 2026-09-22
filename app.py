@@ -8,6 +8,7 @@ from typing import Any, Optional
 import webview
 
 import generator
+import scanner
 
 RULES = [
     {
@@ -105,6 +106,27 @@ class AppApi:
             }
             for r in results
         ]
+
+    def select_scans_dir(self) -> Optional[str]:
+        if not self._window:
+            return None
+        result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
+        if result and len(result) > 0:
+            return str(result[0])
+        return None
+
+    def analyze_scans(self, folder_path: str) -> list[dict[str, Any]]:
+        def progress_callback(current: int, total: int, filename: str) -> None:
+            if self._window:
+                payload = json.dumps({"current": current, "total": total, "filename": filename})
+                self._window.evaluate_js(
+                    f"window.dispatchEvent(new CustomEvent('pywebview-scan-progress', {{ detail: {payload} }}))"
+                )
+
+        return scanner.analyze_scan_folder(folder_path, progress_callback=progress_callback)
+
+    def apply_scan_renames(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return scanner.rename_scans(items)
 
     def open_path(self, path: str) -> bool:
         if not path or not os.path.exists(path):
