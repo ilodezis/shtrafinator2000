@@ -41,9 +41,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # requirements.txt holds version ranges, not an exact lock: let osv-scanner resolve them.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      # requirements.txt holds version ranges, which a scanner can only guess at. Scan what pip
+      # actually installs instead.
+      - run: |
+          pip install -r requirements.txt
+          pip freeze > "$RUNNER_TEMP/frozen.txt"
+          cp "$RUNNER_TEMP/frozen.txt" frozen-requirements.txt
       - uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
         with:
           scan-args: |-
-            --recursive
-            ./
+            --no-resolve
+            -L requirements.txt:frozen-requirements.txt
+            -L package-lock.json:frontend/package-lock.json
