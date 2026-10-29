@@ -73,7 +73,13 @@ def test_analyze_and_rename_scans():
         pdf_path = os.path.join(scans_dir, "SKM_C25822092212000.pdf")
         doc = pymupdf.open()
         page = doc.new_page(width=595, height=842)
-        font_path = "/System/Library/Fonts/Supplemental/Arial.ttf" if os.path.exists("/System/Library/Fonts/Supplemental/Arial.ttf") else None
+        # Any Cyrillic-capable font works; the default built-in one has no Cyrillic glyphs.
+        font_candidates = [
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
+        font_path = next((f for f in font_candidates if os.path.exists(f)), None)
         
         sample_text = (
             "Уведомление об удержании штрафа\n"
