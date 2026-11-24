@@ -1,0 +1,23 @@
+# Swift
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+
+# Build output
+dist/
+
+# IDE / editor and agent config
+.idea/
+.vscode/
+.claude
+.gemini
+.DS_Store
+
+# Excel sheets and Word documents (usually contain personal data)
+*.xlsx
+*.xls
+*.docx
+
+# Test fixtures and the notice template hold no personal data and stay in the repo
+!Tests/ShtrafinatorCoreTests/Fixtures/*.xlsx
+!Resources/template.docx
